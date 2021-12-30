@@ -23,8 +23,74 @@
      <height>25</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="action_Update"/>
+    <addaction name="action_Reload"/>
+    <addaction name="actionReread_re_ferences"/>
+    <addaction name="actionList_references"/>
+    <addaction name="separator"/>
+    <addaction name="action_Quit"/>
+   </widget>
+   <widget class="QMenu" name="menuEdit">
+    <property name="title">
+     <string>&amp;Edit</string>
+    </property>
+    <addaction name="action_Preferences"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="actionAbout_doltk"/>
+    <addaction name="actionKey_bindings"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuEdit"/>
+   <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionAbout_doltk">
+   <property name="text">
+    <string>&amp;About doltk</string>
+   </property>
+  </action>
+  <action name="actionKey_bindings">
+   <property name="text">
+    <string>&amp;Key bindings</string>
+   </property>
+  </action>
+  <action name="action_Update">
+   <property name="text">
+    <string>&amp;Update</string>
+   </property>
+  </action>
+  <action name="action_Reload">
+   <property name="text">
+    <string>&amp;Reload</string>
+   </property>
+  </action>
+  <action name="actionReread_re_ferences">
+   <property name="text">
+    <string>Reread re&amp;ferences</string>
+   </property>
+  </action>
+  <action name="actionList_references">
+   <property name="text">
+    <string>&amp;List references</string>
+   </property>
+  </action>
+  <action name="action_Quit">
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+  </action>
+  <action name="action_Preferences">
+   <property name="text">
+    <string>&amp;Preferences</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
