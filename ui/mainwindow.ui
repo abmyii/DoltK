@@ -16,7 +16,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="20,1,1,40">
     <item>
-     <widget class="QColumnView" name="columnView"/>
+     <widget class="QColumnView" name="commit_history"/>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,1,1,15,0,0,0,1,0,1,40">
@@ -63,17 +63,17 @@
        </spacer>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit"/>
+       <widget class="QLineEdit" name="sha_id"/>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton_2">
+       <widget class="QToolButton" name="left">
         <property name="text">
          <string>...</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton">
+       <widget class="QToolButton" name="right">
         <property name="text">
          <string>...</string>
         </property>
@@ -87,7 +87,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit_2">
+       <widget class="QLineEdit" name="commit_no">
         <property name="maxLength">
          <number>10</number>
         </property>
@@ -104,7 +104,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit_3">
+       <widget class="QLineEdit" name="commits">
         <property name="maxLength">
          <number>10</number>
         </property>
@@ -138,14 +138,14 @@
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton_3">
+       <widget class="QToolButton" name="down">
         <property name="text">
          <string>...</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton_4">
+       <widget class="QToolButton" name="up">
         <property name="text">
          <string>...</string>
         </property>
@@ -159,26 +159,26 @@
        </widget>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBox"/>
+       <widget class="QComboBox" name="search_type"/>
       </item>
       <item>
-       <widget class="QLineEdit" name="lineEdit_4"/>
+       <widget class="QLineEdit" name="query"/>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBox_2"/>
+       <widget class="QComboBox" name="match_type"/>
       </item>
       <item>
-       <widget class="QComboBox" name="comboBox_3"/>
+       <widget class="QComboBox" name="search_on"/>
       </item>
      </layout>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="100,20">
       <item>
-       <widget class="QTableView" name="tableView"/>
+       <widget class="QTableView" name="diff"/>
       </item>
       <item>
-       <widget class="QListView" name="listView"/>
+       <widget class="QListView" name="tables"/>
       </item>
      </layout>
     </item>
