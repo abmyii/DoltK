@@ -194,6 +194,9 @@
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
+    <property name="tearOffEnabled">
+     <bool>true</bool>
+    </property>
     <property name="title">
      <string>&amp;File</string>
     </property>
@@ -205,12 +208,18 @@
     <addaction name="action_Quit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
+    <property name="tearOffEnabled">
+     <bool>true</bool>
+    </property>
     <property name="title">
      <string>&amp;Edit</string>
     </property>
     <addaction name="action_Preferences"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
+    <property name="tearOffEnabled">
+     <bool>true</bool>
+    </property>
     <property name="title">
      <string>&amp;Help</string>
     </property>
@@ -263,5 +272,22 @@
   </action>
  </widget>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>action_Quit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>
