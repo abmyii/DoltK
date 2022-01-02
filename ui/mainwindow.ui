@@ -17,6 +17,13 @@
    <layout class="QVBoxLayout" name="verticalLayout" stretch="40,1,1,40">
     <item>
      <widget class="QTableView" name="commit_history">
+      <property name="font">
+       <font>
+        <family>Noto Mono</family>
+        <pointsize>9</pointsize>
+        <kerning>false</kerning>
+       </font>
+      </property>
       <attribute name="horizontalHeaderVisible">
        <bool>true</bool>
       </attribute>
