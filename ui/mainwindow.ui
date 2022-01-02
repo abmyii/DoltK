@@ -16,24 +16,17 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,1,40">
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="10,8,4,0">
-      <item>
-       <widget class="QListView" name="listView"/>
-      </item>
-      <item>
-       <widget class="QListView" name="listView_3"/>
-      </item>
-      <item>
-       <widget class="QListView" name="listView_2"/>
-      </item>
-      <item>
-       <widget class="QScrollBar" name="verticalScrollBar">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <widget class="QTableView" name="commit_history">
+      <attribute name="horizontalHeaderVisible">
+       <bool>true</bool>
+      </attribute>
+      <attribute name="horizontalHeaderStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="verticalHeaderVisible">
+       <bool>false</bool>
+      </attribute>
+     </widget>
     </item>
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,1,1,15,0,0,0,1,0,1,40">
