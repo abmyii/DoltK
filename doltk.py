@@ -14,7 +14,7 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if index.column() == 0: return self.history[index.row()].message.replace('\n', ' ')
             if index.column() == 1: return self.history[index.row()].author
-            if index.column() == 2: return self.history[index.row()].timestamp
+            if index.column() == 2: return self.history[index.row()].timestamp.split('.')[0]
 
     def rowCount(self, index):
         return len(self.history)
