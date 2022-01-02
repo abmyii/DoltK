@@ -12,7 +12,7 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
 
     def data(self, index, role):
         if role == QtCore.Qt.DisplayRole:
-            if index.column() == 0: return self.history[index.row()].message
+            if index.column() == 0: return self.history[index.row()].message.replace('\n', ' ')
             if index.column() == 1: return self.history[index.row()].author
             if index.column() == 2: return self.history[index.row()].timestamp
 
@@ -38,7 +38,7 @@ class MainWindow:
         self.history_model.load_commits(repo)
 
         self.ui.commit_history.setModel(self.history_model)
-        self.ui.commit_history.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch);
+        self.ui.commit_history.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)  # https://stackoverflow.com/a/34190094
 
         # Execute
         self.ui.show()
