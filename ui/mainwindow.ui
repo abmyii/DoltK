@@ -14,15 +14,21 @@
    <string>DoltK</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout" stretch="40,1,1,40">
+   <layout class="QVBoxLayout" name="verticalLayout" stretch="30,1,1,40">
     <item>
      <widget class="QTableView" name="commit_history">
       <property name="font">
        <font>
-        <family>Noto Mono</family>
+        <family>Sans Serif</family>
         <pointsize>9</pointsize>
         <kerning>false</kerning>
        </font>
+      </property>
+      <property name="showGrid">
+       <bool>false</bool>
+      </property>
+      <property name="gridStyle">
+       <enum>Qt::SolidLine</enum>
       </property>
       <attribute name="horizontalHeaderVisible">
        <bool>true</bool>

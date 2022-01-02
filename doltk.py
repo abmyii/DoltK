@@ -11,10 +11,12 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
         self.history = list(repo.log().values())
 
     def data(self, index, role):
+        commit = self.history[index.row()]
+       
         if role == QtCore.Qt.DisplayRole:
-            if index.column() == 0: return self.history[index.row()].message.replace('\n', ' ')
-            if index.column() == 1: return self.history[index.row()].author
-            if index.column() == 2: return self.history[index.row()].timestamp.split('.')[0]
+            if index.column() == 0: return commit.message.replace('\n', ' ')
+            if index.column() == 1: return f"{commit.author} <{commit.email}>"
+            if index.column() == 2: return commit.timestamp.split('.')[0]
 
     def rowCount(self, index):
         return len(self.history)
@@ -39,9 +41,10 @@ class MainWindow:
 
         self.ui.commit_history.setModel(self.history_model)
         self.ui.commit_history.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)  # https://stackoverflow.com/a/34190094
+        self.ui.commit_history.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)  # https://stackoverflow.com/a/34190094
 
         # Execute
-        self.ui.show()
+        self.ui.showMaximized()
         sys.exit(app.exec_())
     
 
