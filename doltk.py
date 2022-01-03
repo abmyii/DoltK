@@ -1,7 +1,8 @@
 import sys
+from os.path import abspath, dirname, join
 
 from doltpy.cli import Dolt
-from Qt import QtWidgets, QtCompat, QtCore
+from Qt5 import QtCore, QtQml, QtGui
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
@@ -32,29 +33,23 @@ class MainWindow:
         history = repo.log()
 
         # Load UI
-        app = QtWidgets.QApplication(sys.argv)
-        self.ui = QtCompat.loadUi('ui/mainwindow.ui')
+        app = QtGui.QGuiApplication(sys.argv)
+        engine = QtQml.QQmlApplicationEngine()
+        context = engine.rootContext()
 
         # Create commit history model
-        self.commit_views = [self.ui.commit_messages, self.ui.commit_authors, self.ui.commit_timestamps]
-
         self.history_model = CommitHistoryModel()
         self.history_model.load_commits(repo)
 
-        for index, view in enumerate(self.commit_views):
-            view.setModel(self.history_model)
-            view.setModelColumn(index)
-            view.selectionModel().currentChanged.connect(self.on_row_changed)
+        # Expose the Python object to QML
+        context.setContextProperty("history_model", self.history_model)
+
+        # Load QML 
+        qmlFile = join(dirname(__file__), 'ui', 'view.qml')
+        engine.load('ui/view.qml')
 
         # Execute
-        self.ui.showMaximized()
         sys.exit(app.exec_())
-
-    def on_row_changed(self, current, previous):
-        for index, view in enumerate(self.commit_views):
-            model_index = self.history_model.index(current.row(), index)
-            view.scrollTo(model_index)
-            view.setCurrentIndex(model_index)
 
 
 if __name__ == '__main__':
