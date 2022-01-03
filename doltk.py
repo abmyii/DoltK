@@ -7,6 +7,7 @@ from Qt5 import QtCore, QtQml, QtGui
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
     history = []
+    roles = {hash(QtCore.Qt.UserRole): b"message", hash(QtCore.Qt.UserRole+1): b"author", hash(QtCore.Qt.UserRole+2): b"timestamp"}
 
     def load_commits(self, repo):
         self.history = list(repo.log().values())
@@ -14,16 +15,18 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
     def data(self, index, role):
         commit = self.history[index.row()]
        
-        if role == QtCore.Qt.DisplayRole:
-            if index.column() == 0: return commit.message.replace('\n', ' ')
-            if index.column() == 1: return f"{commit.author} <{commit.email}>"
-            if index.column() == 2: return commit.timestamp.split('.')[0].split(' +')[0]
+        if role == hash(QtCore.Qt.UserRole): return commit.message.replace('\n', ' ')
+        elif role == hash(QtCore.Qt.UserRole+1): return f"{commit.author} <{commit.email}>"
+        elif role == hash(QtCore.Qt.UserRole+2): return commit.timestamp.split('.')[0].split(' +')[0]
 
     def rowCount(self, index):
         return len(self.history)
     
     def columnCount(self, index):
         return 3
+
+    def roleNames(self):
+        return self.roles
 
 
 class MainWindow:
@@ -47,6 +50,9 @@ class MainWindow:
         # Load QML 
         qmlFile = join(dirname(__file__), 'ui', 'view.qml')
         engine.load('ui/view.qml')
+
+        #root = engine.rootObjects()[0]
+        #commits = root.findChild(QtCore.QObject, 'commit_messages')
 
         # Execute
         sys.exit(app.exec_())
