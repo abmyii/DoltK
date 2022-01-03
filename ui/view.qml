@@ -22,7 +22,7 @@ ApplicationWindow {
             model: history_model
             delegate: Text {
                 width: parent.width
-                text: model.message
+                text: display.message
                 elide: Text.ElideRight
                 font.pixelSize: 15
             }
@@ -36,7 +36,7 @@ ApplicationWindow {
             model: history_model
             delegate: Text {
                 width: parent.width
-                text: model.author
+                text: display.author
                 clip: true
                 font.pixelSize: 15
             }
@@ -50,7 +50,7 @@ ApplicationWindow {
             model: history_model
             delegate: Text {
                 width: parent.width
-                text: model.timestamp
+                text: display.timestamp
                 clip: true
                 font.pixelSize: 15
             }
