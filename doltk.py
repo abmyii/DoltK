@@ -36,17 +36,14 @@ class MainWindow:
         self.ui = QtCompat.loadUi('ui/mainwindow.ui')
 
         # Create commit history model
+        self.commit_views = [self.ui.commit_messages, self.ui.commit_authors, self.ui.commit_timestamps]
+
         self.history_model = CommitHistoryModel()
         self.history_model.load_commits(repo)
 
-        self.ui.commit_messages.setModel(self.history_model)
-        self.ui.commit_messages.setModelColumn(0)
-
-        self.ui.commit_authors.setModel(self.history_model)
-        self.ui.commit_authors.setModelColumn(1)
-
-        self.ui.commit_timestamps.setModel(self.history_model)
-        self.ui.commit_timestamps.setModelColumn(2)
+        for index, view in enumerate(self.commit_views):
+            view.setModel(self.history_model)
+            view.setModelColumn(index)
 
         # Execute
         self.ui.showMaximized()
