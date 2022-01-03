@@ -39,9 +39,14 @@ class MainWindow:
         self.history_model = CommitHistoryModel()
         self.history_model.load_commits(repo)
 
-        self.ui.commit_history.setModel(self.history_model)
-        self.ui.commit_history.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)  # https://stackoverflow.com/a/34190094
-        self.ui.commit_history.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)  # https://stackoverflow.com/a/34190094
+        self.ui.commit_messages.setModel(self.history_model)
+        self.ui.commit_messages.setModelColumn(0)
+
+        self.ui.commit_authors.setModel(self.history_model)
+        self.ui.commit_authors.setModelColumn(1)
+
+        self.ui.commit_timestamps.setModel(self.history_model)
+        self.ui.commit_timestamps.setModelColumn(2)
 
         # Execute
         self.ui.showMaximized()
