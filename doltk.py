@@ -50,19 +50,20 @@ class DiffModel(QtCore.QAbstractTableModel):
     diff = {}
     current_table = None
 
-    def __init__(self, vertical_header_height, *args, **kwargs):
+    def __init__(self, vertical_header_height, table_list, *args, **kwargs):
         self.vertical_header_height = vertical_header_height
+        self.table_list = table_list
         super().__init__(*args, **kwargs)
-
-    @property
-    def tables(self):
-        return list(self.diff.keys())
 
     def load_diff(self, conn, commit):
         self.diff = conn.diff(commit.parents, commit.ref, conn.tables())
         self.diff = {table: df for table, df in self.diff.items() if len(df)}  # Exclude tables without diffs
         self.current_table = list(self.diff)[0]
         print(self.current_table)
+
+        self.table_list.clear()
+        self.table_list.addItems(list(self.diff))
+        self.table_list.setCurrentRow(0)
 
     def data(self, index, role):
         if role == QtCore.Qt.DisplayRole:
@@ -89,20 +90,6 @@ class DiffModel(QtCore.QAbstractTableModel):
 
     def columnCount(self, index):
         return len(self.diff[self.current_table].columns)
-
-
-class DiffModelTables(QtCore.QAbstractListModel):
-
-    def __init__(self, diff_model, *args, **kwargs):
-        self.diff_model = diff_model
-        super().__init__(*args, **kwargs)
-
-    def data(self, index, role):
-        if role == QtCore.Qt.DisplayRole:
-            return self.diff_model.tables[index.row()]
-
-    def rowCount(self, index):
-        return len(self.diff_model.tables)
 
 
 class MainWindow:
@@ -133,15 +120,14 @@ class MainWindow:
             view.verticalScrollBar().valueChanged.connect(self.sync_listviews)
 
         # Create diff model
-        self.diff_model = DiffModel(self.ui.diff.verticalHeader().defaultSectionSize())
+        self.diff_model = DiffModel(self.ui.diff.verticalHeader().defaultSectionSize(), self.ui.tables)
         self.diff_model.load_diff(self.conn, self.history_model.current_commit)
 
         self.ui.diff.setModel(self.diff_model)
         self.ui.diff.setColumnWidth(0, 60)
         self.ui.diff.resizeColumnsToContents()
 
-        self.diff_model_tables = DiffModelTables(self.diff_model)
-        self.ui.tables.setModel(self.diff_model_tables)
+        self.ui.tables.currentItemChanged.connect(self.select_table)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
@@ -158,6 +144,14 @@ class MainWindow:
     def sync_listviews(self, pos):
         for view in self.commit_views:
             view.verticalScrollBar().setValue(pos)
+
+    def select_table(self, selection):
+        self.diff_model.beginResetModel()
+
+        # Update to new table
+        self.diff_model.current_table = selection.text()
+
+        self.diff_model.endResetModel()
 
 
 if __name__ == '__main__':
