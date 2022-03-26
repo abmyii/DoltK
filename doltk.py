@@ -1,12 +1,24 @@
 import os
+import pandas as pd
 import random
 import subprocess
 import sys
 import time
+import warnings
+
+# Surpress UserWarning regarding ordering by null columns (sqlakeyset)
+warnings.filterwarnings("ignore")
 
 from doltpy.cli import Dolt
 from doltpy.sql import DoltSQLEngineContext, ServerConfig
+from sqlakeyset import get_page, select_page
+from sqlalchemy import select, text, MetaData, Table
+from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import literal_column
 from Qt import QtWidgets, QtCompat, QtCore
+
+
+PAGE_SIZE = 1#0000
 
 
 def start_sql_server(db_path):
@@ -56,8 +68,26 @@ class DiffModel(QtCore.QAbstractTableModel):
         super().__init__(*args, **kwargs)
 
     def load_diff(self, conn, commit):
+        diff_table = Table('dolt_diff_hospitals', conn.metadata, autoload_with=conn.engine)
+        # Order by to_<pk> for pk in pks because from can be null (e.g. adding new row)
+        # What about removed, though?
+        # Removed - use from
+        # Added/modified - use to
+
+        #query = conn.session.query(diff_table).where(text(f'from_commit="{commit.parents}" AND to_commit="{commit.ref}"'))
+        query = conn.session.query(diff_table).where(text(f'from_commit="1mj3g3iqk1m8do0u495j3fnif60133p7" AND to_commit="uri5bv8oasoq7ipcku26nnk9h94n0juq"')).order_by(literal_column('to_cms_certification_num'))
+        #.order_by(text(', '.join(diff_table.columns.keys())))
+
+        # gets the first page
+        print(query.statement)
+        page1 = get_page(query, per_page=2)
+        page2 = get_page(query, per_page=2, page=page1.paging.next)
+        import pdb; pdb.set_trace()
+        print(page1)
+        print(pd.DataFrame(page1, columns=diff_table.columns.keys()))
         self.diff = conn.diff(commit.parents, commit.ref, conn.tables())
         self.diff = {table: df for table, df in self.diff.items() if len(df)}  # Exclude tables without diffs
+
         self.current_table = list(self.diff)[0]
         print(self.current_table)
 
@@ -102,6 +132,10 @@ class MainWindow:
         port = start_sql_server(db_path)
         conf = ServerConfig(user="root", host="localhost", port=port)
         self.conn = DoltSQLEngineContext(repo, conf)
+        
+        # SQLAlchemy setup
+        self.conn.session = Session(self.conn.engine)
+        self.conn.metadata = MetaData(bind=None)
 
         # Load UI
         app = QtWidgets.QApplication(sys.argv)
