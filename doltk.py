@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import random
 import subprocess
 import sys
@@ -6,7 +7,11 @@ import time
 
 from doltpy.cli import Dolt
 from doltpy.sql import DoltSQLEngineContext, ServerConfig
+from sqlalchemy import create_engine
 from Qt import QtWidgets, QtCompat, QtCore
+
+
+CHUNKSIZE = 10#000
 
 
 def start_sql_server(db_path):
@@ -21,6 +26,15 @@ def start_sql_server(db_path):
         return start_sql_server(db_path)
 
     return port
+
+
+def get_diff_chunks(conn, table, commit):
+    with conn.engine.connect() as connection:
+        return pd.read_sql_query(
+            f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}"',
+            connection,
+            chunksize=CHUNKSIZE
+        )
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
@@ -56,8 +70,19 @@ class DiffModel(QtCore.QAbstractTableModel):
         super().__init__(*args, **kwargs)
 
     def load_diff(self, conn, commit):
-        self.diff = conn.diff(commit.parents, commit.ref, conn.tables())
-        self.diff = {table: df for table, df in self.diff.items() if len(df)}  # Exclude tables without diffs
+        # Read first 10k - then only load when scrolling halfway / near end of chunk
+        tables = conn.engine.table_names()
+        self.diff_gens = {table: get_diff_chunks(conn, table, commit) for table in tables}
+        self.diff = {}
+
+        for table in self.diff_gens:
+            try:
+                self.diff[table] = next(self.diff_gens[table])
+            except StopIteration:
+                # Exclude tables without diffs
+                pass
+
+        print(list(self.diff))
         self.current_table = list(self.diff)[0]
         print(self.current_table)
 
@@ -86,9 +111,13 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return size
 
     def rowCount(self, index):
+        if not self.current_table:
+            return 0
         return len(self.diff[self.current_table])
 
     def columnCount(self, index):
+        if not self.current_table:
+            return 0
         return len(self.diff[self.current_table].columns)
 
 
@@ -102,6 +131,14 @@ class MainWindow:
         port = start_sql_server(db_path)
         conf = ServerConfig(user="root", host="localhost", port=port)
         self.conn = DoltSQLEngineContext(repo, conf)
+
+        # FIXME: DoltPy uses mysqlconnector which doesn't support streaming rather than pymysql. Overrides the engine and execution_options.
+        # https://github.com/dolthub/doltpy/blob/2303a427f667c50c565cad8012be19677bcb2025/doltpy/sql/sql.py#L68
+        self.conn.engine = create_engine(
+            str(self.conn.engine.url).replace('mysqlconnector', 'pymysql'),
+            echo=self.conn.server_config.echo,
+            execution_options=dict(stream_results=True)
+        )
 
         # Load UI
         app = QtWidgets.QApplication(sys.argv)
@@ -121,7 +158,6 @@ class MainWindow:
 
         # Create diff model
         self.diff_model = DiffModel(self.ui.diff.verticalHeader().defaultSectionSize(), self.ui.tables)
-        self.diff_model.load_diff(self.conn, self.history_model.current_commit)
 
         self.ui.diff.setModel(self.diff_model)
         self.ui.diff.setColumnWidth(0, 60)
@@ -138,20 +174,29 @@ class MainWindow:
     def on_row_changed(self, current, previous):
         for index, view in enumerate(self.commit_views):
             model_index = self.history_model.index(current.row(), index)
+
+            # Disable/re-enable signal so we don't trigger on_row_changed again for each view
+            view.selectionModel().currentChanged.disconnect(self.on_row_changed)
             view.scrollTo(model_index)
             view.setCurrentIndex(model_index)
+            view.selectionModel().currentChanged.connect(self.on_row_changed)
+
+        # Load new diff
+        self.diff_model.beginResetModel() 
+        self.diff_model.load_diff(self.conn, self.history_model.current_commit)
+        self.diff_model.endResetModel()
 
     def sync_listviews(self, pos):
         for view in self.commit_views:
             view.verticalScrollBar().setValue(pos)
 
     def select_table(self, selection):
-        self.diff_model.beginResetModel()
-
-        # Update to new table
-        self.diff_model.current_table = selection.text()
-
-        self.diff_model.endResetModel()
+        if selection:
+            self.diff_model.beginResetModel() 
+            self.diff_model.current_table = selection.text()  # Update to new table
+            self.diff_model.endResetModel()
+        else:
+            print('NO SELECTION?')
 
 
 if __name__ == '__main__':
