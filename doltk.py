@@ -6,43 +6,31 @@ import sys
 import time
 
 from doltpy.cli import Dolt
-from doltpy.sql import DoltSQLEngineContext, ServerConfig
-from sqlalchemy import create_engine
+from doltpy.cli.read import read_table_sql
 from Qt import QtWidgets, QtCompat, QtCore
 
 
 CHUNKSIZE = 10#000
+PKs = ['cms_certification_num', 'payer', 'code', 'internal_revenue_code', 'inpatient_outpatient']
 
 
-def start_sql_server(db_path):
-    port = f"{random.randint(1025, 65535)}"
-    cmd = f"dolt sql-server -r -l fatal --port {port}"
-
-    sql_server = subprocess.Popen(args=cmd.split(), cwd=db_path)
-    time.sleep(1)
-
-    if sql_server.poll():
-        print('SQL server terminated - restarting')
-        return start_sql_server(db_path)
-
-    return port
+# Overrides doltcli.utils.parse_to_pandas since it converts strings to ints
+def parse_to_pandas(sql_output):
+    return pd.read_csv(sql_output, dtype={column: str for column in PKs})
 
 
-def get_diff_chunks(conn, table, commit):
-    with conn.engine.connect() as connection:
-        return pd.read_sql_query(
-            f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}"',
-            connection,
-            chunksize=CHUNKSIZE
-        )
+def get_diff_chunks(repo, table, commit):
+    query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}"'
+    df = read_table_sql(repo, query, result_parser=parse_to_pandas)
+    print(df)
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
     history = []
     current_commit = None
 
-    def load_commits(self, conn):
-        self.history = list(conn.log().values())
+    def load_commits(self, repo):
+        self.history = list(repo.log().values())
         self.current_commit = self.history[0]
 
     def data(self, index, role):
@@ -51,7 +39,7 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             if index.column() == 0: return self.current_commit.message.replace('\n', ' ')
             if index.column() == 1: return f"{self.current_commit.author} <{self.current_commit.email}>"
-            if index.column() == 2: return self.current_commit.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            if index.column() == 2: return self.current_commit.timestamp#.strftime('%Y-%m-%d %H:%M:%S')
 
     def rowCount(self, index):
         return len(self.history)
@@ -69,10 +57,10 @@ class DiffModel(QtCore.QAbstractTableModel):
         self.table_list = table_list
         super().__init__(*args, **kwargs)
 
-    def load_diff(self, conn, commit):
+    def load_diff(self, repo, commit):
         # Read first 10k - then only load when scrolling halfway / near end of chunk
-        tables = conn.engine.table_names()
-        self.diff_gens = {table: get_diff_chunks(conn, table, commit) for table in tables}
+        tables = repo.ls()
+        self.diff_gens = {table.name: get_diff_chunks(repo, table.name, commit) for table in tables}
         self.diff = {}
 
         for table in self.diff_gens:
@@ -125,20 +113,7 @@ class MainWindow:
     def __init__(self):
         # Load repo
         db_path = os.path.normpath('.' if len(sys.argv) < 2 else sys.argv[1])
-        repo = Dolt(db_path)
-
-        # Initialse SQL server and connection
-        port = start_sql_server(db_path)
-        conf = ServerConfig(user="root", host="localhost", port=port)
-        self.conn = DoltSQLEngineContext(repo, conf)
-
-        # FIXME: DoltPy uses mysqlconnector which doesn't support streaming rather than pymysql. Overrides the engine and execution_options.
-        # https://github.com/dolthub/doltpy/blob/2303a427f667c50c565cad8012be19677bcb2025/doltpy/sql/sql.py#L68
-        self.conn.engine = create_engine(
-            str(self.conn.engine.url).replace('mysqlconnector', 'pymysql'),
-            echo=self.conn.server_config.echo,
-            execution_options=dict(stream_results=True)
-        )
+        self.repo = Dolt(db_path)
 
         # Load UI
         app = QtWidgets.QApplication(sys.argv)
@@ -148,7 +123,7 @@ class MainWindow:
         self.commit_views = [self.ui.commit_messages, self.ui.commit_authors, self.ui.commit_timestamps]
 
         self.history_model = CommitHistoryModel()
-        self.history_model.load_commits(self.conn)
+        self.history_model.load_commits(self.repo)
 
         for index, view in enumerate(self.commit_views):
             view.setModel(self.history_model)
@@ -183,7 +158,7 @@ class MainWindow:
 
         # Load new diff
         self.diff_model.beginResetModel() 
-        self.diff_model.load_diff(self.conn, self.history_model.current_commit)
+        self.diff_model.load_diff(self.repo, self.history_model.current_commit)
         self.diff_model.endResetModel()
 
     def sync_listviews(self, pos):
