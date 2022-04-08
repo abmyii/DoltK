@@ -10,7 +10,7 @@ from doltpy.cli.read import read_table_sql
 from Qt import QtWidgets, QtCompat, QtCore
 
 
-CHUNKSIZE = 10#000
+CHUNKSIZE = 10000
 PKs = ['cms_certification_num', 'payer', 'code', 'internal_revenue_code', 'inpatient_outpatient']
 
 
@@ -20,9 +20,9 @@ def parse_to_pandas(sql_output):
 
 
 def get_diff_chunks(repo, table, commit):
-    query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}"'
+    query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}" LIMIT {CHUNKSIZE};'
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
-    print(df)
+    return df 
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
@@ -52,27 +52,19 @@ class DiffModel(QtCore.QAbstractTableModel):
     diff = {}
     current_table = None
 
-    def __init__(self, vertical_header_height, table_list, *args, **kwargs):
+    def __init__(self, repo, vertical_header_height, table_list, *args, **kwargs):
+        # FIXME: Only reads once for entire repo - very slow (~3s)
+        self.tables = repo.ls()
+
         self.vertical_header_height = vertical_header_height
         self.table_list = table_list
         super().__init__(*args, **kwargs)
 
     def load_diff(self, repo, commit):
         # Read first 10k - then only load when scrolling halfway / near end of chunk
-        tables = repo.ls()
-        self.diff_gens = {table.name: get_diff_chunks(repo, table.name, commit) for table in tables}
-        self.diff = {}
+        self.diff = {table.name: get_diff_chunks(repo, table.name, commit) for table in self.tables}
 
-        for table in self.diff_gens:
-            try:
-                self.diff[table] = next(self.diff_gens[table])
-            except StopIteration:
-                # Exclude tables without diffs
-                pass
-
-        print(list(self.diff))
         self.current_table = list(self.diff)[0]
-        print(self.current_table)
 
         self.table_list.clear()
         self.table_list.addItems(list(self.diff))
@@ -132,7 +124,7 @@ class MainWindow:
             view.verticalScrollBar().valueChanged.connect(self.sync_listviews)
 
         # Create diff model
-        self.diff_model = DiffModel(self.ui.diff.verticalHeader().defaultSectionSize(), self.ui.tables)
+        self.diff_model = DiffModel(self.repo, self.ui.diff.verticalHeader().defaultSectionSize(), self.ui.tables)
 
         self.ui.diff.setModel(self.diff_model)
         self.ui.diff.setColumnWidth(0, 60)
@@ -170,8 +162,6 @@ class MainWindow:
             self.diff_model.beginResetModel() 
             self.diff_model.current_table = selection.text()  # Update to new table
             self.diff_model.endResetModel()
-        else:
-            print('NO SELECTION?')
 
 
 if __name__ == '__main__':
