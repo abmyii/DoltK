@@ -7,10 +7,13 @@ import time
 
 from doltpy.cli import Dolt
 from doltpy.cli.read import read_table_sql
-from Qt import QtWidgets, QtCompat, QtCore
+from Qt import QtWidgets, QtCompat, QtCore, QtGui
 
 
-CHUNKSIZE = 10000
+# NOTE: https://www.dolthub.com/blog/2022-03-25-dolt-diff-magic/
+
+
+CHUNKSIZE = 1000#0
 PKs = ['cms_certification_num', 'payer', 'code', 'internal_revenue_code', 'inpatient_outpatient']
 
 
@@ -71,8 +74,14 @@ class DiffModel(QtCore.QAbstractTableModel):
         self.table_list.setCurrentRow(0)
 
     def data(self, index, role):
+        row = self.diff[self.current_table].iloc[index.row()]
         if role == QtCore.Qt.DisplayRole:
-            return str(self.diff[self.current_table].iloc[index.row()].iloc[index.column()])
+            return str(row.iloc[index.column()])
+        elif role == QtCore.Qt.ForegroundRole:
+            return QtGui.QColor('#5ac58d')
+        elif role == QtCore.Qt.BackgroundRole:
+            if row['diff_type'] == 'modified':  # added
+                return QtGui.QColor('#DDFAE3')
 
     def headerData(self, section, orientation, role):
         if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Orientation.Vertical:
