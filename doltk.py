@@ -14,17 +14,25 @@ from Qt import QtWidgets, QtCompat, QtCore, QtGui
 
 
 CHUNKSIZE = 1000#0
-PKs = ['cms_certification_num', 'payer', 'code', 'internal_revenue_code', 'inpatient_outpatient']
 
 
 # Overrides doltcli.utils.parse_to_pandas since it converts strings to ints
 def parse_to_pandas(sql_output):
-    return pd.read_csv(sql_output, dtype={column: str for column in PKs})
+    return pd.read_csv(sql_output, dtype=str).fillna('')
 
 
 def get_diff_chunks(repo, table, commit):
     query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}" LIMIT {CHUNKSIZE};'
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
+
+    # Reorder columns and split modified into two (before, after)
+    print(df)
+    modified = df[df['diff_type'] == 'modified']
+    modified_from = modified.filter(regex='^from_|diff_type')
+    modified_to = modified.filter(regex='^to_|diff_type')
+    print(modified_from)
+    print(modified_to)
+    print()
     return df 
 
 
@@ -78,10 +86,15 @@ class DiffModel(QtCore.QAbstractTableModel):
         if role == QtCore.Qt.DisplayRole:
             return str(row.iloc[index.column()])
         elif role == QtCore.Qt.ForegroundRole:
-            return QtGui.QColor('#5ac58d')
+            if row['diff_type'] == 'added':
+                return QtGui.QColor('#5AC58D')
+            elif row['diff_type'] == 'removed':
+                return QtGui.QColor('#FF9A99')
         elif role == QtCore.Qt.BackgroundRole:
-            if row['diff_type'] == 'modified':  # added
+            if row['diff_type'] == 'added':
                 return QtGui.QColor('#DDFAE3')
+            elif row['diff_type'] == 'removed':
+                return QtGui.QColor('#FEE9EB')
 
     def headerData(self, section, orientation, role):
         if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Orientation.Vertical:
