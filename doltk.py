@@ -18,7 +18,7 @@ CHUNKSIZE = 1000#0
 
 # Overrides doltcli.utils.parse_to_pandas since it converts strings to ints
 def parse_to_pandas(sql_output):
-    return pd.read_csv(sql_output, dtype=str).fillna('')
+    return pd.read_csv(sql_output, dtype=str)
 
 
 def get_diff_chunks(repo, table, commit):
@@ -33,18 +33,29 @@ def get_diff_chunks(repo, table, commit):
     added.columns = added.columns.str.replace('^to_', '')
     print(added)
 
+    # Select to_ columns only and drop prefix
+    removed = df[df['diff_type'] == 'removed']
+    removed = removed.filter(regex="^from_|diff_type")
+    removed.columns = removed.columns.str.replace('^from_', '')
+    print(removed)
+
     # Reorder columns and split modified into two (before, after)
     modified = df[df['diff_type'] == 'modified']
+
     modified_from = modified.filter(regex='^from_|diff_type')
+    modified_from.columns = modified_from.columns.str.replace('^from_', '')
+
     modified_to = modified.filter(regex='^to_|diff_type')
+    modified_to.columns = modified_to.columns.str.replace('^to_', '')
+
     print(modified_from)
     print(modified_to)
     print()
 
     # zip modified_from and modified_to, then add all back to new df of all changes and sort by PKs
-    df = pd.concat([added])
+    df = pd.concat([added, removed, modified_from, modified_to])
 
-    return df 
+    return df.fillna('')
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
@@ -121,6 +132,7 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return column
             elif role == QtCore.Qt.SizeHintRole:
                 # https://stackoverflow.com/a/46142682
+                # https://stackoverflow.com/a/27446356 instead?
                 max_len = self.diff[self.current_table][column].astype(str).str.len().max()
                 width = max(len(column), max_len)*10  # 10 is font-size?
                 #print(column, width)
@@ -129,11 +141,23 @@ class DiffModel(QtCore.QAbstractTableModel):
         else:
             row = self.diff[self.current_table].iloc[section]
             if role == QtCore.Qt.DisplayRole:
-                return '+' if row['diff_type'] in ['added', 'modified_to'] else '-'
+                return '+' if row['diff_type'] in ['added', 'modified_to'] else '−'
             elif role == QtCore.Qt.ForegroundRole:
-                return QtGui.QColor('#5AC58D')
+                if row['diff_type'] == 'added':
+                    return QtGui.QColor('#5AC58D')
+                elif row['diff_type'] == 'removed':
+                    return QtGui.QColor('#FF9A99')
+                elif row['diff_type'] == 'modified_added':
+                    return QtGui.QColor('#5AC58D')
+                elif row['diff_type'] == 'modified_removed':
+                    return QtGui.QColor('#FF9A99')
+                else:
+                    return QtGui.QColor('#95A3A7')
             elif role == QtCore.Qt.BackgroundRole:
-                return QtGui.QColor('#DDFAE3')
+                if row['diff_type'] == 'added':
+                    return QtGui.QColor('#DDFAE3')
+                elif row['diff_type'] == 'removed':
+                    return QtGui.QColor('#FEE9EB')
 
     def rowCount(self, index):
         if not self.current_table:
