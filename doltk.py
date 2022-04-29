@@ -192,6 +192,9 @@ class MainWindow:
             view.selectionModel().currentChanged.connect(self.on_commit_changed)
             view.verticalScrollBar().valueChanged.connect(self.sync_listviews)
 
+        # Update num_commits
+        self.ui.num_commits.setText(str(len(self.history_model.history)))
+
         # Create diff model
         self.diff_model = DiffModel(self.repo, self.ui.diff.verticalHeader().defaultSectionSize(), self.ui.tables)
 
@@ -224,6 +227,9 @@ class MainWindow:
 
         # Update SHA1
         self.ui.sha_id.setText(self.history_model.current_commit.ref)
+
+        # Update commit number
+        self.ui.commit_no.setText(str(current.row()+1))
 
     def sync_listviews(self, pos):
         for view in self.commit_views:
