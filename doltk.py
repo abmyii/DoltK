@@ -24,15 +24,26 @@ def parse_to_pandas(sql_output):
 def get_diff_chunks(repo, table, commit):
     query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}" LIMIT {CHUNKSIZE};'
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
+    df = df.drop(df.filter(regex='^(from|to)_commit(_date)*$').columns, axis=1)  # remove commit info columns
+    print(df)
+
+    # Select to_ columns only and drop prefix
+    added = df[df['diff_type'] == 'added']
+    added = added.filter(regex="^to_|diff_type")
+    added.columns = added.columns.str.replace('^to_', '')
+    print(added)
 
     # Reorder columns and split modified into two (before, after)
-    print(df)
     modified = df[df['diff_type'] == 'modified']
     modified_from = modified.filter(regex='^from_|diff_type')
     modified_to = modified.filter(regex='^to_|diff_type')
     print(modified_from)
     print(modified_to)
     print()
+
+    # zip modified_from and modified_to, then add all back to new df of all changes and sort by PKs
+    df = pd.concat([added])
+
     return df 
 
 
@@ -90,6 +101,12 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return QtGui.QColor('#5AC58D')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FF9A99')
+            elif row['diff_type'] == 'modified_added':
+                return QtGui.QColor('#5AC58D')
+            elif row['diff_type'] == 'modified_removed':
+                return QtGui.QColor('#FF9A99')
+            else:
+                return QtGui.QColor('#95A3A7')
         elif role == QtCore.Qt.BackgroundRole:
             if row['diff_type'] == 'added':
                 return QtGui.QColor('#DDFAE3')
@@ -97,9 +114,7 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return QtGui.QColor('#FEE9EB')
 
     def headerData(self, section, orientation, role):
-        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Orientation.Vertical:
-            return section
-        elif orientation == QtCore.Qt.Orientation.Horizontal:
+        if orientation == QtCore.Qt.Orientation.Horizontal:
             column = self.diff[self.current_table].columns[section]
 
             if role == QtCore.Qt.DisplayRole:
@@ -111,6 +126,14 @@ class DiffModel(QtCore.QAbstractTableModel):
                 #print(column, width)
                 size = QtCore.QSize(width, self.vertical_header_height)
                 return size
+        else:
+            row = self.diff[self.current_table].iloc[section]
+            if role == QtCore.Qt.DisplayRole:
+                return '+' if row['diff_type'] in ['added', 'modified_to'] else '-'
+            elif role == QtCore.Qt.ForegroundRole:
+                return QtGui.QColor('#5AC58D')
+            elif role == QtCore.Qt.BackgroundRole:
+                return QtGui.QColor('#DDFAE3')
 
     def rowCount(self, index):
         if not self.current_table:
