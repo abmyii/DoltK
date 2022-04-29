@@ -222,6 +222,9 @@ class MainWindow:
         self.diff_model.load_diff(self.repo, self.history_model.current_commit)
         self.diff_model.endResetModel()
 
+        # Update SHA1
+        self.ui.sha_id.setText(self.history_model.current_commit.ref)
+
     def sync_listviews(self, pos):
         for view in self.commit_views:
             view.verticalScrollBar().setValue(pos)
