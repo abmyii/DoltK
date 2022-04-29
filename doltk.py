@@ -189,7 +189,7 @@ class MainWindow:
         for index, view in enumerate(self.commit_views):
             view.setModel(self.history_model)
             view.setModelColumn(index)
-            view.selectionModel().currentChanged.connect(self.on_row_changed)
+            view.selectionModel().currentChanged.connect(self.on_commit_changed)
             view.verticalScrollBar().valueChanged.connect(self.sync_listviews)
 
         # Create diff model
@@ -207,15 +207,15 @@ class MainWindow:
         self.ui.showMaximized()
         sys.exit(app.exec_())
 
-    def on_row_changed(self, current, previous):
+    def on_commit_changed(self, current, previous):
         for index, view in enumerate(self.commit_views):
             model_index = self.history_model.index(current.row(), index)
 
-            # Disable/re-enable signal so we don't trigger on_row_changed again for each view
-            view.selectionModel().currentChanged.disconnect(self.on_row_changed)
+            # Disable/re-enable signal so we don't trigger on_commit_changed again for each view
+            view.selectionModel().currentChanged.disconnect(self.on_commit_changed)
             view.scrollTo(model_index)
             view.setCurrentIndex(model_index)
-            view.selectionModel().currentChanged.connect(self.on_row_changed)
+            view.selectionModel().currentChanged.connect(self.on_commit_changed)
 
         # Load new diff
         self.diff_model.beginResetModel() 
