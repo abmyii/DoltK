@@ -106,9 +106,13 @@ class DiffModel(QtCore.QAbstractTableModel):
     def data(self, index, role):
         row = self.diff[self.current_table].iloc[index.row()]
         if role == QtCore.Qt.DisplayRole:
+            if pd.isna(row.iloc[index.column()]):
+                return 'NaN'
             return str(row.iloc[index.column()])
         elif role == QtCore.Qt.ForegroundRole:
-            if row['diff_type'] == 'added':
+            if pd.isna(row.iloc[index.column()]):
+                return QtGui.QColor(149, 163, 167, 125)
+            elif row['diff_type'] == 'added':
                 return QtGui.QColor('#5AC58D')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FF9A99')
