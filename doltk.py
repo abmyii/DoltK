@@ -25,37 +25,37 @@ def get_diff_chunks(repo, table, commit):
     query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}" LIMIT {CHUNKSIZE};'
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
     df = df.drop(df.filter(regex='^(from|to)_commit(_date)*$').columns, axis=1)  # remove commit info columns
-    print(df)
 
     # Select to_ columns only and drop prefix
     added = df[df['diff_type'] == 'added']
     added = added.filter(regex="^to_|diff_type")
     added.columns = added.columns.str.replace('^to_', '')
-    print(added)
 
     # Select to_ columns only and drop prefix
     removed = df[df['diff_type'] == 'removed']
     removed = removed.filter(regex="^from_|diff_type")
     removed.columns = removed.columns.str.replace('^from_', '')
-    print(removed)
 
     # Reorder columns and split modified into two (before, after)
     modified = df[df['diff_type'] == 'modified']
 
     modified_from = modified.filter(regex='^from_|diff_type')
     modified_from.columns = modified_from.columns.str.replace('^from_', '')
+    modified_from['diff_type'] = 'modified_removed'
 
     modified_to = modified.filter(regex='^to_|diff_type')
     modified_to.columns = modified_to.columns.str.replace('^to_', '')
-
-    print(modified_from)
-    print(modified_to)
-    print()
+    modified_to['diff_type'] = 'modified_added'
 
     # zip modified_from and modified_to, then add all back to new df of all changes and sort by PKs
     df = pd.concat([added, removed, modified_from, modified_to])
 
-    return df.fillna('')
+    # Get PKs and sort by them
+    table_columns = read_table_sql(repo, f'DESC {table};', result_parser=parse_to_pandas)
+    table_pks = list(table_columns[table_columns['Key'] == 'PRI']['Field'])
+    df = df.fillna('').sort_values(table_pks)
+
+    return df
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
@@ -141,7 +141,7 @@ class DiffModel(QtCore.QAbstractTableModel):
         else:
             row = self.diff[self.current_table].iloc[section]
             if role == QtCore.Qt.DisplayRole:
-                return '+' if row['diff_type'] in ['added', 'modified_to'] else '−'
+                return '+' if row['diff_type'] in ['added', 'modified_added'] else '−'
             elif role == QtCore.Qt.ForegroundRole:
                 if row['diff_type'] == 'added':
                     return QtGui.QColor('#5AC58D')
@@ -167,7 +167,7 @@ class DiffModel(QtCore.QAbstractTableModel):
     def columnCount(self, index):
         if not self.current_table:
             return 0
-        return len(self.diff[self.current_table].columns)
+        return len(self.diff[self.current_table].columns)-1  # -1 to exclude diff_type
 
 
 class MainWindow:
