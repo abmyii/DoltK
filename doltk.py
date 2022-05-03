@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import random
-import re
 import subprocess
 import sys
 import time
@@ -33,23 +32,22 @@ def get_diff_chunks(repo, table, commit):
     table_columns = read_table_sql(repo, f'DESC {table};', result_parser=parse_to_pandas)
     table_pks = list(table_columns[table_columns['Key'] == 'PRI']['Field'])
 
-    # Combine from/to columns into one (added + removed)
-    modified = df['diff_type'] == 'modified'
-    for to_col in df.filter(regex='^to_'):
-        from_col = re.sub('^to_', 'from_', to_col)
-        col = re.sub('^to_', '', to_col)
-        
-        # FIXME: This is an ugly solution, and involves repetition. Combine with for-loop below somehow.
-        df[col] = df[from_col].combine_first(df[to_col])
+    # Combine from/to columns into one
+    columns = [
+        (col, f"from_{col}", f"to_{col}")
+        for col in df.columns.str.extract('^to_(.*)', expand=False).dropna()
+    ]
+    for col, from_col, to_col in columns:
+        df[col] = df[to_col]
+        df.loc[df['diff_type'] == 'removed', col] = df[from_col]  # For removed rows, to_col is NaN
 
-    # Sort on to_<pk> for pk in PKs
+    # Sort on to_<pk> for all PKs
     df = df.sort_values(table_pks)
 
-    # For each modified row, combine from/to columns into a single column and duplicate rows (before, after)
-    for to_col in df.filter(regex='^to_'):
-        from_col = re.sub('^to_', 'from_', to_col)
-        col = re.sub('^to_', '', to_col)
-
+    # Add modified overlay - each cell will be a list with two values: [before, after]
+    # NOTE: This is done after sorting as it fails on list values
+    modified = df['diff_type'] == 'modified'
+    for col, from_col, to_col in columns:
         df.loc[modified, col] = df[[from_col, to_col]].agg(list, axis=1)
 
     df.loc[modified, 'diff_type'] = 'modified_from'
