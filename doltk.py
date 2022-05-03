@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import random
+import re
 import subprocess
 import sys
 import time
@@ -24,36 +25,39 @@ def parse_to_pandas(sql_output):
 def get_diff_chunks(repo, table, commit):
     query = f'SELECT * FROM dolt_diff_{table} WHERE from_commit="{commit.parents}" and to_commit="{commit.ref}" LIMIT {CHUNKSIZE};'
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
-    df = df.drop(df.filter(regex='^(from|to)_commit(_date)*$').columns, axis=1)  # remove commit info columns
 
-    # Select to_ columns only and drop prefix
-    added = df[df['diff_type'] == 'added']
-    added = added.filter(regex="^to_|diff_type")
-    added.columns = added.columns.str.replace('^to_', '')
+    # Remove commit info columns
+    df = df.drop(df.filter(regex='^(from|to)_commit(_date)*$').columns, axis=1)
 
-    # Select to_ columns only and drop prefix
-    removed = df[df['diff_type'] == 'removed']
-    removed = removed.filter(regex="^from_|diff_type")
-    removed.columns = removed.columns.str.replace('^from_', '')
-
-    # Reorder columns and split modified into two (before, after)
-    modified = df[df['diff_type'] == 'modified']
-
-    modified_from = modified.filter(regex='^from_|diff_type')
-    modified_from.columns = modified_from.columns.str.replace('^from_', '')
-    modified_from['diff_type'] = 'modified_removed'
-
-    modified_to = modified.filter(regex='^to_|diff_type')
-    modified_to.columns = modified_to.columns.str.replace('^to_', '')
-    modified_to['diff_type'] = 'modified_added'
-
-    # zip modified_from and modified_to, then add all back to new df of all changes and sort by PKs
-    df = pd.concat([added, removed, modified_from, modified_to])
-
-    # Get PKs and sort by them
+    # Get table PKs
     table_columns = read_table_sql(repo, f'DESC {table};', result_parser=parse_to_pandas)
     table_pks = list(table_columns[table_columns['Key'] == 'PRI']['Field'])
-    df = df.fillna('').sort_values(table_pks)
+
+    # Combine from/to columns into one (added + removed)
+    modified = df['diff_type'] == 'modified'
+    for to_col in df.filter(regex='^to_'):
+        from_col = re.sub('^to_', 'from_', to_col)
+        col = re.sub('^to_', '', to_col)
+        
+        # FIXME: This is an ugly solution, and involves repetition. Combine with for-loop below somehow.
+        df[col] = df[from_col].combine_first(df[to_col])
+
+    # Sort on to_<pk> for pk in PKs
+    df = df.sort_values(table_pks)
+
+    # For each modified row, combine from/to columns into a single column and duplicate rows (before, after)
+    for to_col in df.filter(regex='^to_'):
+        from_col = re.sub('^to_', 'from_', to_col)
+        col = re.sub('^to_', '', to_col)
+
+        df.loc[modified, col] = df[[from_col, to_col]].agg(list, axis=1)
+
+    df.loc[modified, 'diff_type'] = 'modified_from'
+    df = df.append(df.loc[modified].assign(diff_type='modified_to')).sort_index().reset_index(drop=True)  # Insert rows directly below original modified row
+
+    # Drop from/to columns and reorder so diff_type is at the end
+    df.drop(df.filter(regex='^(from|to)').columns, axis=1, inplace=True)
+    df.insert(len(df.columns)-1, 'diff_type', df.pop('diff_type'))
 
     return df
 
@@ -105,21 +109,30 @@ class DiffModel(QtCore.QAbstractTableModel):
 
     def data(self, index, role):
         row = self.diff[self.current_table].iloc[index.row()]
-        if role == QtCore.Qt.DisplayRole:
-            if pd.isna(row.iloc[index.column()]):
+        value = row.iloc[index.column()]
+        isna = pd.isna(value) is True
+        if role == QtCore.Qt.FontRole:
+            font = QtGui.QFont("Courier New")
+            font.setStyleHint(QtGui.QFont.Monospace)  # https://stackoverflow.com/a/42042184
+            return font
+        elif role == QtCore.Qt.DisplayRole:
+            if isna:
                 return 'NaN'
-            return str(row.iloc[index.column()])
+            elif row['diff_type'].startswith('modified'):
+                return str(value[0 if row['diff_type'] == 'modified_from' else 1])
+            else:
+                return str(value)
         elif role == QtCore.Qt.ForegroundRole:
-            if pd.isna(row.iloc[index.column()]):
+            if isna:
                 return QtGui.QColor(149, 163, 167, 125)
             elif row['diff_type'] == 'added':
                 return QtGui.QColor('#5AC58D')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FF9A99')
-            elif row['diff_type'] == 'modified_added':
-                return QtGui.QColor('#5AC58D')
-            elif row['diff_type'] == 'modified_removed':
+            elif row['diff_type'] == 'modified_from' and len(set(value)) == 2:  # If both values for column are the same, then it is unmodified
                 return QtGui.QColor('#FF9A99')
+            elif row['diff_type'] == 'modified_to' and len(set(value)) == 2:
+                return QtGui.QColor('#5AC58D')
             else:
                 return QtGui.QColor('#95A3A7')
         elif role == QtCore.Qt.BackgroundRole:
@@ -144,19 +157,14 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return size
         else:
             row = self.diff[self.current_table].iloc[section]
+            indicator = '+' if row['diff_type'] in ['added', 'modified_to'] else '−'
             if role == QtCore.Qt.DisplayRole:
-                return '+' if row['diff_type'] in ['added', 'modified_added'] else '−'
+                return indicator 
             elif role == QtCore.Qt.ForegroundRole:
-                if row['diff_type'] == 'added':
+                if indicator == '+':
                     return QtGui.QColor('#5AC58D')
-                elif row['diff_type'] == 'removed':
-                    return QtGui.QColor('#FF9A99')
-                elif row['diff_type'] == 'modified_added':
-                    return QtGui.QColor('#5AC58D')
-                elif row['diff_type'] == 'modified_removed':
-                    return QtGui.QColor('#FF9A99')
                 else:
-                    return QtGui.QColor('#95A3A7')
+                    return QtGui.QColor('#FF9A99')
             elif role == QtCore.Qt.BackgroundRole:
                 if row['diff_type'] == 'added':
                     return QtGui.QColor('#DDFAE3')
