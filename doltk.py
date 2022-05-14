@@ -171,6 +171,29 @@ class DiffModel(QtCore.QAbstractTableModel):
         return len(self.diff[self.current_table].columns)-1  # -1 to exclude diff_type
 
 
+# https://stackoverflow.com/a/39433736
+class HorizontalLineDelegate(QtWidgets.QStyledItemDelegate):
+    
+    def __init__(self, tableView):
+        super().__init__(tableView)
+        gridHint = tableView.style().styleHint(QtWidgets.QStyle.SH_Table_GridLineColor, QtWidgets.QStyleOptionViewItem())
+        gridHint &= 0xffffffff  # https://riverbankcomputing.com/pipermail/pyqt/2010-February/025893.html
+        gridColor = QtGui.QColor.fromRgb(gridHint)
+        self.pen = QtGui.QPen(gridColor, 0, tableView.gridStyle())
+        self.view = tableView
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        oldPen = painter.pen()
+        painter.setPen(self.pen)
+
+        p1 = QtCore.QPoint(option.rect.bottomLeft().x()-1,option.rect.bottomLeft().y())
+        p2 = QtCore.QPoint(option.rect.bottomRight().x()+1,option.rect.bottomRight().y())
+        painter.drawLine(p1, p2)
+        painter.setPen(oldPen)
+
+
 class MainWindow:
     def __init__(self):
         # Load repo
@@ -206,6 +229,7 @@ class MainWindow:
         self.ui.tables.currentItemChanged.connect(self.select_table)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.ui.diff.setItemDelegate(HorizontalLineDelegate(self.ui.diff))
 
         self.ui.diff.horizontalHeader().setStyleSheet("""
             QHeaderView { background-color:white }
