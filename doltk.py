@@ -207,7 +207,10 @@ class MainWindow:
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
-        self.ui.diff.horizontalHeader().setStyleSheet("QHeaderView{ background-color:white } QHeaderView::section { background-color:white }")
+        self.ui.diff.horizontalHeader().setStyleSheet("""
+            QHeaderView { background-color:white }
+            QHeaderView::section { border: none; background-color:white }"""
+        )
 
         # Execute
         self.ui.showMaximized()
