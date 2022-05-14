@@ -67,12 +67,32 @@ def get_diff_chunks(repo, table, commit):
 
 
 class CommitHistoryModel(QtCore.QAbstractTableModel):
+    icons = []
     history = []
     current_commit = None
 
     def load_commits(self, repo):
         self.history = list(repo.log().values())
         self.current_commit = self.history[0]
+
+        self.generate_icons()
+
+    def generate_icons(self):
+        for commit in self.history:
+            icon = QtGui.QPixmap(16, 16)
+            icon.fill(QtCore.Qt.transparent)
+
+            painter = QtGui.QPainter(icon)
+            painter.setRenderHint(QtGui.QPainter.Antialiasing)
+            painter.setBrush(QtCore.Qt.red)
+            painter.drawEllipse(QtCore.QPoint(8,8),5,5)
+
+            # if has a parent, add line to parent
+            if True:  # parent
+                painter.drawLine(8, 12, 8, 20)
+                painter.drawLine(8, 4, 8, -4)
+
+            self.icons.append(icon)
 
     def data(self, index, role):
         self.current_commit = self.history[index.row()]
@@ -81,6 +101,8 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
             if index.column() == 0: return self.current_commit.message.replace('\n', ' ')
             if index.column() == 1: return f"{self.current_commit.author} <{self.current_commit.email}>"
             if index.column() == 2: return self.current_commit.timestamp#.strftime('%Y-%m-%d %H:%M:%S')
+        elif index.column() == 0 and role == QtCore.Qt.DecorationRole:
+            return self.icons[index.row()]
 
     def rowCount(self, index):
         return len(self.history)
