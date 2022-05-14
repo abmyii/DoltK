@@ -215,7 +215,11 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="100,20">
       <item>
-       <widget class="QTableView" name="diff"/>
+       <widget class="QTableView" name="diff">
+        <attribute name="verticalHeaderHighlightSections">
+         <bool>false</bool>
+        </attribute>
+       </widget>
       </item>
       <item>
        <widget class="QListWidget" name="tables"/>

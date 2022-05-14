@@ -180,6 +180,35 @@ class DiffModel(QtCore.QAbstractTableModel):
         return len(self.diff[self.current_table].columns)-1  # -1 to exclude diff_type
 
 
+class QLineDelegate(QtWidgets.QStyledItemDelegate):
+    
+    def __init__(self, tableView):
+        super().__init__(tableView)
+        gridHint = tableView.style().styleHint(QtWidgets.QStyle.SH_Table_GridLineColor, QtWidgets.QStyleOptionViewItem())
+        gridHint &= 0xffffffff  # https://riverbankcomputing.com/pipermail/pyqt/2010-February/025893.html
+        gridColor = QtGui.QColor.fromRgb(gridHint)
+        self.pen = QtGui.QPen(gridColor, 0, tableView.gridStyle())
+        self.view = tableView
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+
+        oldPen = painter.pen()
+        painter.setPen(self.pen)
+
+        #draw verticalLine
+        #painter->drawLine(option.rect.topRight(), option.rect.bottomRight())
+
+        #draw horizontalLine
+        #painter->drawLine(option.rect.bottomLeft(), option.rect.bottomRight())
+        #above code, line have breakpoint, the following code can solve it well
+
+        p1 = QtCore.QPoint(option.rect.bottomLeft().x()-1,option.rect.bottomLeft().y())
+        p2 = QtCore.QPoint(option.rect.bottomRight().x()+1,option.rect.bottomRight().y())
+        painter.drawLine(p1, p2)
+        painter.setPen(oldPen)
+
+
 class MainWindow:
     def __init__(self):
         # Load repo
@@ -215,6 +244,12 @@ class MainWindow:
         self.ui.tables.currentItemChanged.connect(self.select_table)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.ui.diff.setShowGrid(False)
+        self.ui.diff.setItemDelegate(QLineDelegate(self.ui.diff))
+        #self.ui.diff.verticalHeader().setShowGrid(False)
+
+        # https://stackoverflow.com/a/36149220 / https://stackoverflow.com/a/69076881 / https://stackoverflow.com/a/59636452
+        #self.ui.diff.verticalHeader().setStyleSheet("QHeaderView::section { border: 0px; margin: 5px; }")
 
         # Execute
         self.ui.showMaximized()
