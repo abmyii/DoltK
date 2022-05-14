@@ -176,9 +176,11 @@ class HorizontalLineDelegate(QtWidgets.QStyledItemDelegate):
     
     def __init__(self, tableView):
         super().__init__(tableView)
+
         gridHint = tableView.style().styleHint(QtWidgets.QStyle.SH_Table_GridLineColor, QtWidgets.QStyleOptionViewItem())
         gridHint &= 0xffffffff  # https://riverbankcomputing.com/pipermail/pyqt/2010-February/025893.html
         gridColor = QtGui.QColor.fromRgb(gridHint)
+
         self.pen = QtGui.QPen(gridColor, 0, tableView.gridStyle())
         self.view = tableView
 
@@ -229,11 +231,14 @@ class MainWindow:
         self.ui.tables.currentItemChanged.connect(self.select_table)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
-        self.ui.diff.setItemDelegate(HorizontalLineDelegate(self.ui.diff))
+
+        # Style diff table grids
+        row_delegate = HorizontalLineDelegate(self.ui.diff)
+        self.ui.diff.setItemDelegate(row_delegate)
 
         self.ui.diff.horizontalHeader().setStyleSheet("""
             QHeaderView { background-color:white }
-            QHeaderView::section { border: none; background-color:white }"""
+            QHeaderView::section { border: none; border-bottom: 1px solid %s; background-color:white }""" % row_delegate.pen.color().name()
         )
 
         # Execute
