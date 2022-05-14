@@ -53,9 +53,15 @@ def get_diff_chunks(repo, table, commit):
     df.loc[modified, 'diff_type'] = 'modified_from'
     df = df.append(df.loc[modified].assign(diff_type='modified_to')).sort_index().reset_index(drop=True)  # Insert rows directly below original modified row
 
+    # diff_symbols (+ or - depending on diff_type)
+    diff_symbols = df['diff_type'].apply(
+        lambda diff_type: '+' if diff_type in ['added', 'modified_to'] else '−'
+    )
+
     # Drop from/to columns and reorder so diff_type is at the end
     df.drop(df.filter(regex='^(from|to)').columns, axis=1, inplace=True)
     df.insert(len(df.columns)-1, 'diff_type', df.pop('diff_type'))
+    df.insert(0, '', diff_symbols)
 
     return df
 
@@ -116,7 +122,7 @@ class DiffModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DisplayRole:
             if isna:
                 return 'NaN'
-            elif row['diff_type'].startswith('modified'):
+            elif row['diff_type'].startswith('modified') and index.column() != 0:
                 return str(value[0 if row['diff_type'] == 'modified_from' else 1])
             else:
                 return str(value)
@@ -127,9 +133,9 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return QtGui.QColor('#5AC58D')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FF9A99')
-            elif row['diff_type'] == 'modified_from' and len(set(value)) == 2:  # If both values for column are the same, then it is unmodified
+            elif row['diff_type'] == 'modified_from' and (len(set(value)) == 2 or index.column() == 0):  # If both values for column are the same, then it is unmodified
                 return QtGui.QColor('#FF9A99')
-            elif row['diff_type'] == 'modified_to' and len(set(value)) == 2:
+            elif row['diff_type'] == 'modified_to' and (len(set(value)) == 2 or index.column() == 0):
                 return QtGui.QColor('#5AC58D')
             else:
                 return QtGui.QColor('#95A3A7')
@@ -153,21 +159,6 @@ class DiffModel(QtCore.QAbstractTableModel):
                 #print(column, width)
                 size = QtCore.QSize(width, self.vertical_header_height)
                 return size
-        else:
-            row = self.diff[self.current_table].iloc[section]
-            indicator = '+' if row['diff_type'] in ['added', 'modified_to'] else '−'
-            if role == QtCore.Qt.DisplayRole:
-                return indicator 
-            elif role == QtCore.Qt.ForegroundRole:
-                if indicator == '+':
-                    return QtGui.QColor('#5AC58D')
-                else:
-                    return QtGui.QColor('#FF9A99')
-            elif role == QtCore.Qt.BackgroundRole:
-                if row['diff_type'] == 'added':
-                    return QtGui.QColor('#DDFAE3')
-                elif row['diff_type'] == 'removed':
-                    return QtGui.QColor('#FEE9EB')
 
     def rowCount(self, index):
         if not self.current_table:
@@ -215,6 +206,8 @@ class MainWindow:
         self.ui.tables.currentItemChanged.connect(self.select_table)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         #self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+
+        self.ui.diff.horizontalHeader().setStyleSheet("QHeaderView{ background-color:white } QHeaderView::section { background-color:white }")
 
         # Execute
         self.ui.showMaximized()
