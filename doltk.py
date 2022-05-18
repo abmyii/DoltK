@@ -75,12 +75,9 @@ def get_diff_chunks(repo, table, commit):
 class CommitHistoryModel(QtCore.QAbstractTableModel):
     icons = []
     history = []
-    current_commit = None
 
     def load_commits(self, repo):
         self.history = list(repo.log().values())
-        self.current_commit = self.history[0]
-
         self.generate_icons()
 
     def generate_icons(self):
@@ -101,13 +98,13 @@ class CommitHistoryModel(QtCore.QAbstractTableModel):
             self.icons.append(icon)
 
     def data(self, index, role):
-        self.current_commit = self.history[index.row()]
+        commit = self.history[index.row()]
 
         if role == QtCore.Qt.DisplayRole:
             return {
-                0: self.current_commit.message.replace('\n', ' '),
-                1: f"{self.current_commit.author} <{self.current_commit.email}>",
-                2: self.current_commit.timestamp
+                0: commit.message.replace('\n', ' '),
+                1: f"{commit.author} <{commit.email}>",
+                2: commit.timestamp
             }[index.column()]
         elif index.column() == 0 and role == QtCore.Qt.DecorationRole:
             return self.icons[index.row()]
@@ -305,6 +302,8 @@ class MainWindow:
         sys.exit(app.exec_())
 
     def on_commit_changed(self, current, previous):
+        commit = self.history_model.history[current.row()]
+
         for index, view in enumerate(self.commit_views):
             model_index = self.history_model.index(current.row(), index)
 
@@ -317,11 +316,11 @@ class MainWindow:
 
         # Load new diff
         self.diff_model.beginResetModel()
-        self.diff_model.load_diff(self.repo, self.history_model.current_commit)
+        self.diff_model.load_diff(self.repo, commit)
         self.diff_model.endResetModel()
 
         # Update SHA1
-        self.ui.sha_id.setText(self.history_model.current_commit.ref)
+        self.ui.sha_id.setText(commit.ref)
 
         # Update commit number
         self.ui.commit_no.setText(str(current.row()+1))
