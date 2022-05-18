@@ -166,6 +166,8 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return QtGui.QColor('#DDFAE3')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FEE9EB')
+        elif role == QtCore.Qt.TextAlignmentRole and index.column() == 0:
+            return int(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Orientation.Horizontal:
@@ -181,6 +183,8 @@ class DiffModel(QtCore.QAbstractTableModel):
                 #print(column, width)
                 size = QtCore.QSize(width, self.vertical_header_height)
                 return size
+            elif role == QtCore.Qt.TextAlignmentRole:
+                return int(QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
 
     def rowCount(self, index):
         if not self.current_table:
