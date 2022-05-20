@@ -96,6 +96,11 @@ class MainWindow:
             """ % row_delegate.pen.color().name()
         )
 
+        # Connect signals
+        self.ui.query.returnPressed.connect(
+            lambda: self.diff_model.filter_query(self.repo, self.history_model.history[0], self.ui.query.text())
+        )
+
         # Execute
         self.ui.showMaximized()
         sys.exit(app.exec_())

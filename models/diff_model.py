@@ -2,6 +2,7 @@ from doltpy.cli.read import read_table_sql
 from Qt import QtCore, QtGui
 
 import pandas as pd
+import pandasql as ps
 
 
 # NOTE: https://www.dolthub.com/blog/2022-03-25-dolt-diff-magic/
@@ -15,10 +16,10 @@ def parse_to_pandas(sql_output):
     return pd.read_csv(sql_output, dtype=str)
 
 
-def get_diff_chunks(repo, table, commit):
+def get_diff_chunks(repo, table, commit, filter_query=None):
     query = f"""
     SELECT * FROM dolt_diff_{table} WHERE
-        from_commit="{commit.parents}" and to_commit="{commit.ref}"
+        from_commit="{commit.parents}" AND to_commit="{commit.ref}"
         LIMIT {CHUNKSIZE};
     """
     df = read_table_sql(repo, query, result_parser=parse_to_pandas)
@@ -43,6 +44,10 @@ def get_diff_chunks(repo, table, commit):
 
     # Sort on to_<pk> for all PKs
     df = df.sort_values(table_pks)
+
+    # Apply filter
+    if filter_query:
+        df = ps.sqldf(filter_query)
 
     # Modified overlay - each cell will be a list with values: [before, after]
     # NOTE: This is done after sorting as it fails on list items
@@ -160,3 +165,10 @@ class DiffModel(QtCore.QAbstractTableModel):
         if not self.current_table:
             return 0
         return len(self.diff[self.current_table].columns)-1  # -1 to exclude diff_type
+
+    def filter_query(self, repo, commit, query):
+        self.beginResetModel()
+        self.diff[self.current_table] = get_diff_chunks(
+            repo, self.current_table, commit, query
+        )
+        self.endResetModel()
