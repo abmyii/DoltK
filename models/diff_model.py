@@ -18,6 +18,7 @@ def parse_to_pandas(sql_output):
     return pd.read_csv(sql_output, dtype=str)
 
 
+# FIXME: Speed up further
 def get_diff_chunks(repo, table, commit, filter_query=None):
     query = f"""
     SELECT * FROM dolt_diff_{table} WHERE
@@ -34,6 +35,14 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
         repo, f'DESC {table};', result_parser=parse_to_pandas
     )
     table_pks = list(table_columns[table_columns['Key'] == 'PRI']['Field'])
+
+    # FIXME: DESC doesn't returned columns in correct order via DoltCLI - not sure why.
+    ordered_columns = list(
+        read_table_sql(repo, f'''
+            SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE
+            table_name="{table}" ORDER BY ordinal_position;
+        ''', result_parser=parse_to_pandas)['column_name']
+    )
 
     # Combine from/to columns into one
     columns = [
@@ -72,8 +81,7 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
     )
 
     # Drop from/to columns and reorder so diff_type is at the end
-    df.drop(df.filter(regex='^(from|to)').columns, axis=1, inplace=True)
-    df.insert(len(df.columns)-1, 'diff_type', df.pop('diff_type'))
+    df = df[ordered_columns + ['diff_type']]
     df.insert(0, '', diff_symbols)
 
     return df
