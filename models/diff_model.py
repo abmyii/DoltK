@@ -108,8 +108,11 @@ class DiffModel(QtCore.QAbstractTableModel):
         row = self.diff[self.current_table].iloc[index.row()]
         value = row.iloc[index.column()]
 
+        if row['diff_type'].startswith('modified') and index.column() != 0:
+            mod = value[0] != value[1]  # Unmodified if both values in column are same
+            value = value[0 if row['diff_type'] == 'modified_from' else 1]
+
         isna = pd.isna(value) is True
-        mod = len(set(value)) == 2  # Unodified if both values for column are the same
 
         if role == QtCore.Qt.FontRole:
             font = QtGui.QFont("Courier New")
@@ -118,10 +121,7 @@ class DiffModel(QtCore.QAbstractTableModel):
         elif role == QtCore.Qt.DisplayRole:
             if isna:
                 return 'NaN'
-            elif row['diff_type'].startswith('modified') and index.column() != 0:
-                return str(value[0 if row['diff_type'] == 'modified_from' else 1])
-            else:
-                return str(value)
+            return str(value)
         elif role == QtCore.Qt.ForegroundRole:
             if isna:
                 return QtGui.QColor(149, 163, 167, 125)
