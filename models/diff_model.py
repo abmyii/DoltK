@@ -13,6 +13,8 @@ CHUNKSIZE = 10000
 
 # Overrides doltcli.utils.parse_to_pandas since it converts strings to ints
 def parse_to_pandas(sql_output):
+    # FIXME: Rather than str for all, get table schema and map based on that.
+    # Default to str for all, and only map other convertible types (int, double, etc.)
     return pd.read_csv(sql_output, dtype=str)
 
 
@@ -52,8 +54,11 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
     # Modified overlay - each cell will be a list with values: [before, after]
     # NOTE: This is done after sorting as it fails on list items
     modified = df['diff_type'] == 'modified'
-    for col, from_col, to_col in columns:
-        df.loc[modified, col] = df[[from_col, to_col]].agg(list, axis=1)
+    for merged_col, from_col, to_col in columns:
+        # Convert individually to lists, then add them to concatenate
+        from_ = df[from_col].apply(lambda obj: list([obj]))
+        to = df[to_col].apply(lambda obj: list([obj]))
+        df.loc[modified, merged_col] = from_ + to
 
     # Insert modified_to rows directly below original modified row
     df.loc[modified, 'diff_type'] = 'modified_from'
