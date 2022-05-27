@@ -70,10 +70,11 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
         df.loc[modified, merged_col] = from_ + to
 
     # Insert modified_to rows directly below original modified row
+    # https://stackoverflow.com/questions/45565311/pandas-interleave-zip-two-dataframes-by-row#comment80868881_45565489
     df.loc[modified, 'diff_type'] = 'modified_from'
     df = df.append(
         df.loc[modified].assign(diff_type='modified_to')
-    ).sort_index().reset_index(drop=True)
+    ).sort_index(kind='mergesort', ignore_index=True)
 
     # diff_symbols (+ or - depending on diff_type)
     diff_symbols = df['diff_type'].apply(
