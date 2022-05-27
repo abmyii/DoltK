@@ -91,13 +91,15 @@ class DiffModel(QtCore.QAbstractTableModel):
     diff = {}
     current_table = None
 
-    def __init__(self, repo, vertical_header_height, table_list, *args, **kwargs):
+    def __init__(self, repo, table_list, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
         # FIXME: Only reads once for entire repo - very slow (~3s)
         self.tables = repo.ls()
-
-        self.vertical_header_height = vertical_header_height
         self.table_list = table_list
-        super().__init__(*args, **kwargs)
+
+        self.font = QtGui.QFont("Courier New")
+        self.font.setStyleHint(QtGui.QFont.Monospace)
 
     def load_diff(self, repo, commit):
         # Read first 10k - then only load when scrolling halfway / near end of chunk
@@ -120,18 +122,14 @@ class DiffModel(QtCore.QAbstractTableModel):
             mod = value[0] != value[1]  # Unmodified if both values in column are same
             value = value[0 if row['diff_type'] == 'modified_from' else 1]
 
-        isna = pd.isna(value) is True
-
         if role == QtCore.Qt.FontRole:
-            font = QtGui.QFont("Courier New")
-            font.setStyleHint(QtGui.QFont.Monospace)
-            return font
+            return self.font
         elif role == QtCore.Qt.DisplayRole:
-            if isna:
+            if pd.isna(value):
                 return 'NaN'
             return str(value)
         elif role == QtCore.Qt.ForegroundRole:
-            if isna:
+            if pd.isna(value):
                 return QtGui.QColor(149, 163, 167, 125)
             elif row['diff_type'] == 'added':
                 return QtGui.QColor('#5AC58D')
@@ -148,24 +146,13 @@ class DiffModel(QtCore.QAbstractTableModel):
                 return QtGui.QColor('#DDFAE3')
             elif row['diff_type'] == 'removed':
                 return QtGui.QColor('#FEE9EB')
-        elif role == QtCore.Qt.TextAlignmentRole and index.column() == 0:
-            return int(QtCore.Qt.AlignHCenter | QtCore.Qt.AlignVCenter)
+        elif role == QtCore.Qt.TextAlignmentRole:
+            return int(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
     def headerData(self, section, orientation, role):
         if orientation == QtCore.Qt.Orientation.Horizontal:
-            column = self.diff[self.current_table].columns[section]
-
             if role == QtCore.Qt.DisplayRole:
-                return column
-            elif role == QtCore.Qt.SizeHintRole:
-                # https://stackoverflow.com/a/46142682
-                # https://stackoverflow.com/a/27446356 instead?
-                max_len = \
-                    self.diff[self.current_table][column].astype(str).str.len().max()
-                width = max(len(column), max_len)*10  # 10 is font-size?
-                # print(column, width)
-                size = QtCore.QSize(width, self.vertical_header_height)
-                return size
+                return self.diff[self.current_table].columns[section]
             elif role == QtCore.Qt.TextAlignmentRole:
                 return int(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
 
@@ -185,3 +172,12 @@ class DiffModel(QtCore.QAbstractTableModel):
             repo, self.current_table, commit, query
         )
         self.endResetModel()
+
+    def get_longest_str(self, col_no):
+        # Explode to split rows with modified overlay
+        column = self.diff[self.current_table].iloc[:, col_no]
+        column = column.append(pd.Series(column.name))  # Default size
+        column = column.explode().reset_index(drop=True).astype(str)
+
+        lengths = column.str.len()
+        return column[lengths[lengths == lengths.max()].index[0]]

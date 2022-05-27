@@ -69,22 +69,14 @@ class MainWindow:
         # Create diff model
         self.diff_model = DiffModel(
             self.repo,
-            self.ui.diff.verticalHeader().defaultSectionSize(),
             self.ui.tables
         )
 
         self.ui.diff.setModel(self.diff_model)
-        self.ui.diff.setColumnWidth(0, 60)
-        self.ui.diff.resizeColumnsToContents()
-
-        self.ui.tables.currentItemChanged.connect(self.select_table)
-        # self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
-        # self.ui.diff.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
 
         # Style diff table grids
         row_delegate = HorizontalLineDelegate(self.ui.diff)
         self.ui.diff.setItemDelegate(row_delegate)
-
         self.ui.diff.horizontalHeader().setStyleSheet(
             """
             QHeaderView { background-color:white }
@@ -95,11 +87,17 @@ class MainWindow:
             }
             """ % row_delegate.pen.color().name()
         )
+        self.ui.diff.horizontalHeader().setFixedHeight(
+            self.ui.diff.verticalHeader().defaultSectionSize()
+        )
 
         # Connect signals
         self.ui.query.returnPressed.connect(
-            lambda: self.diff_model.filter_query(self.repo, self.history_model.history[0], self.ui.query.text())
+            lambda: self.diff_model.filter_query(
+                self.repo, self.history_model.history[0], self.ui.query.text()
+            )
         )
+        self.ui.tables.currentItemChanged.connect(self.select_table)
 
         # Execute
         self.ui.showMaximized()
@@ -138,6 +136,23 @@ class MainWindow:
             self.diff_model.beginResetModel()
             self.diff_model.current_table = selection.text()  # Update to new table
             self.diff_model.endResetModel()
+
+            self.resize_diff_columns()
+
+    def resize_diff_columns(self):
+        for column in range(self.diff_model.columnCount(None)):
+            # First column (symbol for diff_type) should be a little larger
+            if column == 0:
+                self.ui.diff.setColumnWidth(
+                    column,
+                    self.ui.diff.horizontalHeader().defaultSectionSize()/2
+                )
+            else:
+                # https://stackoverflow.com/a/27446356
+                text = self.diff_model.get_longest_str(column)
+                document = QtGui.QTextDocument(text)
+                document.setDefaultFont(self.diff_model.font)
+                self.ui.diff.setColumnWidth(column, document.idealWidth()*1.5)
 
 
 if __name__ == '__main__':
