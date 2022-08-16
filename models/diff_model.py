@@ -36,12 +36,12 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
     )
     table_pks = list(table_columns[table_columns['Key'] == 'PRI']['Field'])
 
-    # FIXME: DESC doesn't returned columns in correct order via DoltCLI - not sure why.
+    # FIXME: DESC doesn't return columns in correct order via DoltCLI - not sure why.
     ordered_columns = list(
         read_table_sql(repo, f'''
-            SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE
+            SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE
             table_name="{table}" ORDER BY ordinal_position;
-        ''', result_parser=parse_to_pandas)['column_name']
+        ''', result_parser=parse_to_pandas)['COLUMN_NAME']
     )
 
     # Combine from/to columns into one
@@ -95,18 +95,19 @@ class DiffModel(QtCore.QAbstractTableModel):
     def __init__(self, repo, table_list, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # FIXME: Only reads once for entire repo - very slow (~3s)
-        self.tables = repo.ls()
         self.table_list = table_list
 
         self.font = QtGui.QFont("Courier New")
         self.font.setStyleHint(QtGui.QFont.Monospace)
 
     def load_diff(self, repo, commit):
+        query = f'SELECT DISTINCT table_name FROM dolt_diff WHERE commit_hash="{commit.ref}";'
+        tables = read_table_sql(repo, query)
+
         # Read first 10k - then only load when scrolling halfway / near end of chunk
         self.diff = {
-            table.name: get_diff_chunks(repo, table.name, commit)
-            for table in self.tables
+            table["table_name"]: get_diff_chunks(repo, table["table_name"], commit)
+            for table in tables
         }
 
         self.current_table = list(self.diff)[0]
