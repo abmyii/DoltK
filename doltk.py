@@ -1,5 +1,5 @@
 from doltpy.cli import Dolt
-from Qt import QtWidgets, QtCompat, QtCore, QtGui
+from PyQt5 import QtWidgets, QtCore, QtGui, uic
 
 import os
 import sys
@@ -47,7 +47,7 @@ class MainWindow:
 
         # Load UI
         app = QtWidgets.QApplication(sys.argv)
-        self.ui = QtCompat.loadUi('ui/mainwindow.ui')
+        self.ui = uic.loadUi('ui/mainwindow.ui')
 
         # Create commit history model
         self.commit_views = [

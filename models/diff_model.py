@@ -1,5 +1,5 @@
 from doltpy.cli.read import read_table_sql
-from Qt import QtCore, QtGui
+from PyQt5 import QtCore, QtGui
 
 import pandas as pd
 import pandasql as ps
