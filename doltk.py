@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from doltpy.cli import Dolt
 from Qt import QtWidgets, QtCompat, QtCore, QtGui
 
