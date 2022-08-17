@@ -1,0 +1,5 @@
+doltpy
+pandas
+pandasql
+Qt.py
+PyQt5
