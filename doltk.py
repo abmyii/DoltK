@@ -146,14 +146,14 @@ class MainWindow:
             if column == 0:
                 self.ui.diff.setColumnWidth(
                     column,
-                    self.ui.diff.horizontalHeader().defaultSectionSize()/2
+                    self.ui.diff.horizontalHeader().defaultSectionSize()//2
                 )
             else:
                 # https://stackoverflow.com/a/27446356
                 text = self.diff_model.get_longest_str(column)
                 document = QtGui.QTextDocument(text)
                 document.setDefaultFont(self.diff_model.font)
-                self.ui.diff.setColumnWidth(column, document.idealWidth()*1.5)
+                self.ui.diff.setColumnWidth(column, int(document.idealWidth()*1.5))
 
 
 if __name__ == '__main__':

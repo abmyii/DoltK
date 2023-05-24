@@ -15,7 +15,7 @@ CHUNKSIZE = 10000
 def parse_to_pandas(sql_output):
     # FIXME: Rather than str for all, get table schema and map based on that.
     # Default to str for all, and only map other convertible types (int, double, etc.)
-    return pd.read_csv(sql_output, dtype=str)
+    return pd.read_csv(sql_output, encoding='latin-1', dtype=str)
 
 
 # FIXME: Speed up further
