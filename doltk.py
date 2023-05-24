@@ -146,7 +146,7 @@ class MainWindow:
             if column == 0:
                 self.ui.diff.setColumnWidth(
                     column,
-                    self.ui.diff.horizontalHeader().defaultSectionSize()//2
+                    int(self.ui.diff.horizontalHeader().defaultSectionSize()//2)
                 )
             else:
                 # https://stackoverflow.com/a/27446356
