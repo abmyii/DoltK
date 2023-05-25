@@ -54,7 +54,8 @@ def get_diff_chunks(repo, table, commit, filter_query=None):
         df.loc[df['diff_type'] == 'removed', col] = df[from_col]
 
     # Sort on to_<pk> for all PKs
-    df = df.sort_values(table_pks)
+    if table_pks:
+        df = df.sort_values(table_pks)
 
     # Apply filter
     if filter_query:
@@ -101,6 +102,9 @@ class DiffModel(QtCore.QAbstractTableModel):
         self.font.setStyleHint(QtGui.QFont.Monospace)
 
     def load_diff(self, repo, commit):
+        # Reset current_table
+        self.current_table = None
+
         query = f'SELECT DISTINCT table_name FROM dolt_diff WHERE commit_hash="{commit.ref}";'
         tables = read_table_sql(repo, query)
 
@@ -110,7 +114,8 @@ class DiffModel(QtCore.QAbstractTableModel):
             for table in tables
         }
 
-        self.current_table = list(self.diff)[0]
+        if self.diff:
+            self.current_table = list(self.diff)[0]
 
         self.table_list.clear()
         self.table_list.addItems(list(self.diff))
